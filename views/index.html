@@ -1,0 +1,48 @@
+{{ define "index" }}
+<!doctype html>
+<html>
+    <head>
+        <title>{{.Title}}</title>
+        <script src="https://unpkg.com/htmx.org@1.9.6"></script>
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css" />
+        <link rel="stylesheet" href="static/styles.css" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta charset="utf-8" />
+        <meta name="description" content="Color the World!" />
+    </head>
+    <body>
+        <h1>{{.Title}}</h1>
+        <div id="overlayContainer">
+            {{ template "appContainer" . }}
+            <div
+                id="clickOverlay"
+                hx-post="/update-pixel"
+                hx-trigger="click"
+                hx-target="#appContainer"
+                hx-swap="outerHTML"
+            ></div>
+        </div>
+        <div id="pickerContainer">
+            <label for="colorPicker">Select color:</label>
+            <input type="color" id="colorPicker" value="#000000" />
+        </div>
+        <script src="static/clickableMap.js"></script>
+    </body>
+</html>
+{{ end }}
+
+{{ define "appContainer" }}
+<div id="appContainer">
+    <div id="mapContainer">
+        <img
+            id="mapImage"
+            src="data:image/png;base64,{{.MapImageBase64}}"
+            alt="Color World Map"
+            width="1024"
+            height="512"
+        />
+    </div>
+    <div id="lastUpdate">Last updated: {{.LastUpdate}}</div>
+    <div id="version">Pixels drawn: {{.Updates}}</div>
+</div>
+{{ end }}
