@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"sync"
@@ -76,9 +77,9 @@ func GetPixels() ([]Pixel, error) {
 
 func UpdatePixel(newPixel Pixel) error {
 	key := fmt.Sprintf("%d:%d", newPixel.X, newPixel.Y)
-	err := rdb.Set(key, []byte(newPixel.Color), 0)
-	if err != nil {
-		return err
+	success := rdb.Conn().SetXX(context.Background(), key, []byte(newPixel.Color), 0).Val() // Set pixel color in Redis if key exists
+	if !success {
+		return fmt.Errorf("Pixel %d:%d not found", newPixel.X, newPixel.Y)
 	}
 	fmt.Printf("Updated in-memory pixel %d:%d to %s\n", newPixel.X, newPixel.Y, newPixel.Color)
 	return nil

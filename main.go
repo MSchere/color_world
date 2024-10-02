@@ -61,13 +61,13 @@ func updatePixel(c *fiber.Ctx) error {
 	color := c.FormValue("color")
 
 	// TODO: Validate color with regex
-	if color == "" {
+	if len(color) != 7 {
 		return c.Status(fiber.StatusBadRequest).SendString("Invalid color")
 	}
 
 	err = UpdatePixel(Pixel{x, y, color})
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).SendString("Error updating pixel")
+		return c.Status(fiber.StatusUnprocessableEntity).SendString("Cannot update that pixel")
 	}
 
 	mapCache, err := UpdateMapCache(Pixel{x, y, color})
