@@ -12,7 +12,6 @@ import (
 )
 
 func main() {
-
 	engine := html.New("./views", ".html")
 
 	app := fiber.New(fiber.Config{
@@ -25,7 +24,7 @@ func main() {
 
 	InitPixelRepository()
 
-	go LoadPixels()
+	RegenerateMap()
 
 	app.Get("/", renderMap)
 	app.Post("/update-pixel", updatePixel)
@@ -35,7 +34,7 @@ func main() {
 }
 
 func renderMap(c *fiber.Ctx) error {
-	mapCache, err := GenerateMap()
+	mapCache, err := LoadMap()
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).SendString("Error generating map image")
 	}
@@ -66,12 +65,12 @@ func updatePixel(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).SendString("Invalid color")
 	}
 
-	err = UpdatePixel(x, y, color)
+	err = UpdatePixel(Pixel{x, y, color})
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).SendString("Error updating pixel")
 	}
 
-	mapCache, err = UpdateMapCache()
+	mapCache, err := UpdateMapCache(Pixel{x, y, color})
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).SendString("Error updating map cache")
 	}

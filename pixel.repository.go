@@ -21,85 +21,84 @@ type MapCache struct {
 	LastUpdate time.Time `json:"last_update"`
 }
 
+const SEA_COLOR string = "#5b6ee1"
+
 var (
-	rdb        *redis.Storage
-	pixelMap   = make(map[string]string)
-	mapCache   = &MapCache{}
-	pixelMutex sync.RWMutex
+	rdb *redis.Storage
 )
 
 func InitPixelRepository() {
 	rdb = RedisConnection()
 }
 
-func LoadPixels() {
+func GetPixels() ([]Pixel, error) {
+	rdb := RedisConnection()
 	width, height := 1024, 512
 	totalPixels := width * height
 
-	var wg sync.WaitGroup                  // Wait for all goroutines to finish
-	semaphore := make(chan struct{}, 1000) // Limit concurrent goroutines
+	pixels := make([]Pixel, 0, totalPixels)
+	var wg sync.WaitGroup                      // Wait group to wait for all goroutines to finish
+	pixelChan := make(chan Pixel, totalPixels) // Channel to send pixels
+	semaphore := make(chan struct{}, 1000)     // Limit concurrent goroutines
 
-	fmt.Println("Loading map pixels...")
 	for x := 0; x < width; x++ {
 		for y := 0; y < height; y++ {
-			wg.Add(1) // Increment the WaitGroup counter
-			go func(x, y int) {
-				defer wg.Done()
-				semaphore <- struct{}{}        // Acquire semaphore
-				defer func() { <-semaphore }() // Release semaphore
+			wg.Add(1)           // Increment wait group counter for each goroutine
+			go func(x, y int) { // Goroutine to fetch pixel from Redis and send it to channel when done
+				defer wg.Done()                // Decrement wait group counter when the goroutine finishes
+				semaphore <- struct{}{}        // Acquire semaphore to limit concurrent goroutines
+				defer func() { <-semaphore }() // Release semaphore when the goroutine finishes
 
 				key := fmt.Sprintf("%d:%d", x, y)
 				color, err := rdb.Get(key)
-				if err != nil {
-					fmt.Println(err)
-					return
+				if err != nil || color == nil {
+					color = []byte(SEA_COLOR)
 				}
-
-				pixelMutex.Lock()
-				pixelMap[key] = string(color)
-				pixelMutex.Unlock()
-
-				fmt.Printf("\rLoading map pixels in memory... %d/%d", len(pixelMap), totalPixels)
+				colorStr := string(color)
+				pixelChan <- Pixel{X: x, Y: y, Color: colorStr} // Send pixel to channel
+				fmt.Printf("\rLoading map pixels... %d/%d", len(pixels), totalPixels)
 			}(x, y)
 		}
 	}
-	wg.Wait()
-	fmt.Printf(" - Done!\n")
+
+	go func() {
+		wg.Wait() // Wait for all goroutines to finish
+		fmt.Printf(" - Done!\n")
+		close(pixelChan) // Close the channel
+	}()
+
+	for pixel := range pixelChan {
+		pixels = append(pixels, pixel)
+	}
+
+	return pixels, nil
 }
 
-func UpdatePixel(x int, y int, color string) error {
-	key := fmt.Sprintf("%d:%d", x, y)
-	err := rdb.Set(key, []byte(color), 0)
+func UpdatePixel(newPixel Pixel) error {
+	key := fmt.Sprintf("%d:%d", newPixel.X, newPixel.Y)
+	err := rdb.Set(key, []byte(newPixel.Color), 0)
 	if err != nil {
 		return err
 	}
-
-	pixelMutex.Lock()
-	pixelMap[key] = color
-	pixelMutex.Unlock()
-
-	fmt.Printf("Updated in-memory pixel %d:%d to %s\n", x, y, pixelMap[key])
+	fmt.Printf("Updated in-memory pixel %d:%d to %s\n", newPixel.X, newPixel.Y, newPixel.Color)
 	return nil
 }
 
-func GetMapCache() (*MapCache, error) {
+func GetMapCache() *MapCache {
 	val, err := rdb.Get("map")
+	var cache *MapCache = &MapCache{} // Default empty cache
 	if err != nil {
-		return nil, err
+		fmt.Println("MapCache key not found, returning empty cache")
+		return cache // Return empty cache
 	}
 
-	var cache MapCache
 	err = json.Unmarshal(val, &cache)
-	return &cache, err
+	return cache
 }
 
-func UpdateMapCache() (*MapCache, error) {
-	cache, err := GetMapCache()
-	if err != nil {
-		fmt.Println(err)
-		return nil, err
-	}
-	mapImage, err := GenerateImage()
+func UpdateMapCache(newPixel Pixel) (*MapCache, error) {
+	cache := GetMapCache()
+	mapImage, err := UpdateImage(cache.Image, newPixel)
 	if err != nil {
 		fmt.Println(err)
 		return nil, err

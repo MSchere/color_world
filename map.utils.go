@@ -9,22 +9,26 @@ import (
 	"time"
 )
 
-func GenerateMap() (*MapCache, error) {
-	mapCache, err := GetMapCache()
-	if err != nil {
-		fmt.Println("Map cache key not found! Creating an empty map cache")
-		mapCache = &MapCache{}
-	}
-
+func LoadMap() (*MapCache, error) {
+	mapCache := GetMapCache()
 	if mapCache.Image != nil {
 		fmt.Println("Loaded map from cache")
 		return mapCache, nil
 	}
-
-	fmt.Println("Regenerating map...")
 	// If we're here, we need to generate the image
+	return RegenerateMap()
+}
 
-	imgBytes, err := GenerateImage()
+func RegenerateMap() (*MapCache, error) {
+	fmt.Println("Regenerating map...")
+	mapCache := GetMapCache()
+
+	pixels, err := GetPixels()
+	if err != nil {
+		return nil, err
+	}
+
+	imgBytes, err := GenerateImage(pixels)
 	if err != nil {
 		return nil, err
 	}
@@ -38,26 +42,39 @@ func GenerateMap() (*MapCache, error) {
 	return mapCache, nil
 }
 
-// TODO: This function is buggy, it changes both the updated pixel and the previously updated ones
-func GenerateImage() ([]byte, error) {
+func GenerateImage(pixels []Pixel) ([]byte, error) {
 	width, height := 1024, 512
-	img := image.NewRGBA(image.Rect(0, 0, width, height))
+	rgba := image.NewRGBA(image.Rect(0, 0, width, height))
 
-	for y := 0; y < height; y++ {
-		for x := 0; x < width; x++ {
-			key := fmt.Sprintf("%d:%d", x, y)
-			pixelMutex.RLock()
-			r, g, b := hexToRGB(pixelMap[key])
-			pixelMutex.RUnlock()
-			img.Set(x, y, color.RGBA{r, g, b, 255})
-		}
+	for _, pixel := range pixels {
+		r, g, b := hexToRGB(pixel.Color)
+		rgba.Set(pixel.X, pixel.Y, color.RGBA{r, g, b, 255})
 	}
 
 	var buf bytes.Buffer
-	if err := png.Encode(&buf, img); err != nil {
+	if err := png.Encode(&buf, rgba); err != nil {
 		return nil, err
 	}
 	fmt.Println("Generated map image")
+	return buf.Bytes(), nil
+}
+
+func UpdateImage(imageToUpdate []byte, newPixel Pixel) ([]byte, error) {
+	if imageToUpdate == nil {
+		return nil, fmt.Errorf("Image to update is nil")
+	}
+	img, _, _ := image.Decode(bytes.NewReader(imageToUpdate))
+	rgba := img.(*image.RGBA)
+
+	r, g, b := hexToRGB(newPixel.Color)
+	rgba.Set(newPixel.X, newPixel.Y, color.RGBA{r, g, b, 255})
+
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, rgba); err != nil {
+		fmt.Println("Error encoding image")
+		return nil, err
+	}
+
 	return buf.Bytes(), nil
 }
 
