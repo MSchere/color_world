@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/base64"
 	"log"
+	"regexp"
 	"strconv"
 	"time"
 
@@ -60,14 +61,14 @@ func updatePixel(c *fiber.Ctx) error {
 
 	color := c.FormValue("color")
 
-	// TODO: Validate color with regex
-	if len(color) != 7 {
+	match, err := regexp.MatchString("^#[0-9a-fA-F]{6}$", color)
+	if !match || err != nil {
 		return c.Status(fiber.StatusBadRequest).SendString("Invalid color")
 	}
 
 	err = UpdatePixel(Pixel{x, y, color})
 	if err != nil {
-		return c.Status(fiber.StatusUnprocessableEntity).SendString("Cannot update that pixel")
+		return c.Status(fiber.StatusUnprocessableEntity).SendString(err.Error())
 	}
 
 	mapCache, err := UpdateMapCache(Pixel{x, y, color})

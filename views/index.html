@@ -4,7 +4,6 @@
     <head>
         <title>{{.Title}}</title>
         <script src="https://unpkg.com/htmx.org@1.9.6"></script>
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css" />
         <link rel="stylesheet" href="static/styles.css" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta charset="utf-8" />
@@ -13,7 +12,7 @@
     <body>
         <h1>{{.Title}}</h1>
         <div id="overlayContainer">
-            {{ template "appContainer" . }}
+            {{ template "appContainer" . }} {{ template "errorDialog" . }}
             <div
                 id="clickOverlay"
                 hx-post="/update-pixel"
@@ -27,11 +26,10 @@
             <input type="color" id="colorPicker" value="#000000" />
         </div>
         <script src="static/clickableMap.js"></script>
+        <script src="static/errorHandler.js"></script>
     </body>
 </html>
-{{ end }}
-
-{{ define "appContainer" }}
+{{ end }} {{ define "appContainer" }}
 <div id="appContainer">
     <div id="mapContainer">
         <img
@@ -45,4 +43,11 @@
     <div id="lastUpdate">Last updated: {{.LastUpdate}}</div>
     <div id="version">Pixels drawn: {{.Updates}}</div>
 </div>
+{{ end }} {{ define "errorDialog" }}
+<dialog id="errorDialog">
+    <p id="errorMessage"></p>
+    <form method="dialog">
+        <button>OK</button>
+    </form>
+</dialog>
 {{ end }}

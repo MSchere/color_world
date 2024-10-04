@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"sync"
@@ -40,7 +39,7 @@ func GetPixels() ([]Pixel, error) {
 	pixels := make([]Pixel, 0, totalPixels)
 	var wg sync.WaitGroup                      // Wait group to wait for all goroutines to finish
 	pixelChan := make(chan Pixel, totalPixels) // Channel to send pixels
-	semaphore := make(chan struct{}, 1000)     // Limit concurrent goroutines
+	semaphore := make(chan struct{}, 100)      // Limit concurrent goroutines
 
 	for x := 0; x < width; x++ {
 		for y := 0; y < height; y++ {
@@ -63,9 +62,9 @@ func GetPixels() ([]Pixel, error) {
 	}
 
 	go func() {
-		wg.Wait() // Wait for all goroutines to finish
-		fmt.Printf(" - Done!\n")
+		wg.Wait()        // Wait for all goroutines to finish
 		close(pixelChan) // Close the channel
+		fmt.Printf(" - Done!\n")
 	}()
 
 	for pixel := range pixelChan {
@@ -76,20 +75,57 @@ func GetPixels() ([]Pixel, error) {
 }
 
 func UpdatePixel(newPixel Pixel) error {
-	key := fmt.Sprintf("%d:%d", newPixel.X, newPixel.Y)
-	success := rdb.Conn().SetXX(context.Background(), key, []byte(newPixel.Color), 0).Val() // Set pixel color in Redis if key exists
-	if !success {
-		return fmt.Errorf("Pixel %d:%d not found", newPixel.X, newPixel.Y)
+	if !pixelExists(newPixel) {
+		return fmt.Errorf("Invalid pixel position, cannot update sea pixels")
+	}
+	if !isColorValid(newPixel) {
+		return fmt.Errorf("Invalid pixel color, must be different from the current color")
+	}
+	if !isPositionValid(newPixel) {
+		return fmt.Errorf("Invalid pixel position, must be adjacent to another pixel of the same color")
+	}
+	err := rdb.Set(fmt.Sprintf("%d:%d", newPixel.X, newPixel.Y), []byte(newPixel.Color), 0)
+	if err != nil {
+		return fmt.Errorf("Failed to update pixel in database")
 	}
 	fmt.Printf("Updated in-memory pixel %d:%d to %s\n", newPixel.X, newPixel.Y, newPixel.Color)
 	return nil
+}
+
+func pixelExists(p Pixel) bool {
+	val, err := rdb.Get(fmt.Sprintf("%d:%d", p.X, p.Y))
+	return val != nil || err != nil
+}
+
+func isColorValid(p Pixel) bool {
+	existingPixelColor, _ := rdb.Get(fmt.Sprintf("%d:%d", p.X, p.Y))
+	return string(existingPixelColor) != p.Color
+}
+
+func isPositionValid(p Pixel) bool {
+	// check that any of the 8 surrounding pixels is the same color
+	for x := p.X - 1; x <= p.X+1; x++ {
+		for y := p.Y - 1; y <= p.Y+1; y++ {
+			if x == p.X && y == p.Y { // Skip the pixel itself
+				continue
+			}
+			neighbourColor, err := rdb.Get(fmt.Sprintf("%d:%d", x, y))
+			if err != nil || neighbourColor == nil { // Skip if neighbour pixel does not exist (sea)
+				continue
+			}
+			if string(neighbourColor) == p.Color {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func GetMapCache() *MapCache {
 	val, err := rdb.Get("map")
 	var cache *MapCache = &MapCache{} // Default empty cache
 	if err != nil {
-		fmt.Println("MapCache key not found, returning empty cache")
+		fmt.Println(err)
 		return cache // Return empty cache
 	}
 
