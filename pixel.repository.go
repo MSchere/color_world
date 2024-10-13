@@ -21,7 +21,10 @@ type MapCache struct {
 	LastUpdate time.Time `json:"last_update"`
 }
 
-const SEA_COLOR string = "#5b6ee1"
+const (
+	SEA_COLOR  = "#5b6ee1"
+	PIXEL_SIZE = 5
+)
 
 var (
 	rdb *redis.Storage

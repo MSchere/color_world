@@ -53,11 +53,13 @@ func updatePixel(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).SendString("Invalid X coordinate")
 	}
+	posX := x / PIXEL_SIZE
 
 	y, err := strconv.Atoi(c.FormValue("y"))
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).SendString("Invalid Y coordinate")
 	}
+	posY := y / PIXEL_SIZE
 
 	color := c.FormValue("color")
 
@@ -65,13 +67,12 @@ func updatePixel(c *fiber.Ctx) error {
 	if !match || err != nil {
 		return c.Status(fiber.StatusBadRequest).SendString("Invalid color")
 	}
-
-	err = UpdatePixel(Pixel{x, y, color})
+	err = UpdatePixel(Pixel{posX, posY, color})
 	if err != nil {
 		return c.Status(fiber.StatusUnprocessableEntity).SendString(err.Error())
 	}
 
-	mapCache, err := UpdateMapCache(Pixel{x, y, color})
+	mapCache, err := UpdateMapCache(Pixel{posX, posY, color})
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).SendString("Error updating map cache")
 	}

@@ -12,6 +12,9 @@
     --font-weight-normal: 500;
     --font-weight-medium: 600;
     --font-weight-bold: 800;
+    --pixel-size: 5;
+    --map-width: 1024px;
+    --map-height: 512px;
 
     font-family: var(--font-family);
     font-optical-sizing: auto;
@@ -420,14 +423,14 @@ label input {
     left: 0;
     margin: 0;
     border: 1px solid #fcfcfc;
-    width: 1024px;
-    height: 512px;
+    width: calc(var(--map-width) * var(--pixel-size));
+    height: calc(var(--map-height) * var(--pixel-size));
     cursor: crosshair;
 }
 
 #mapContainer {
-    width: 1024px;
-    height: 512px;
+    width: calc(var(--map-width) * var(--pixel-size));
+    height: calc(var(--map-height) * var(--pixel-size));
 }
 
 #pickerContainer {

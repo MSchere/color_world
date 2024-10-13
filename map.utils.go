@@ -43,12 +43,15 @@ func RegenerateMap() (*MapCache, error) {
 }
 
 func GenerateImage(pixels []Pixel) ([]byte, error) {
-	width, height := 1024, 512
+	width, height := 1024*PIXEL_SIZE, 512*PIXEL_SIZE
 	rgba := image.NewRGBA(image.Rect(0, 0, width, height))
-
 	for _, pixel := range pixels {
 		r, g, b := hexToRGB(pixel.Color)
-		rgba.Set(pixel.X, pixel.Y, color.RGBA{r, g, b, 255})
+		for x := 0; x < PIXEL_SIZE; x++ {
+			for y := 0; y < PIXEL_SIZE; y++ {
+				rgba.Set(pixel.X*PIXEL_SIZE+x, pixel.Y*PIXEL_SIZE+y, color.RGBA{r, g, b, 255})
+			}
+		}
 	}
 
 	var buf bytes.Buffer
@@ -67,7 +70,11 @@ func UpdateImage(imageToUpdate []byte, newPixel Pixel) ([]byte, error) {
 	rgba := img.(*image.RGBA)
 
 	r, g, b := hexToRGB(newPixel.Color)
-	rgba.Set(newPixel.X, newPixel.Y, color.RGBA{r, g, b, 255})
+	for x := 0; x < PIXEL_SIZE; x++ {
+		for y := 0; y < PIXEL_SIZE; y++ {
+			rgba.Set(newPixel.X*PIXEL_SIZE+x, newPixel.Y*PIXEL_SIZE+y, color.RGBA{r, g, b, 255})
+		}
+	}
 
 	var buf bytes.Buffer
 	if err := png.Encode(&buf, rgba); err != nil {

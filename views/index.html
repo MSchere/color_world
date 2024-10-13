@@ -32,13 +32,7 @@
 {{ end }} {{ define "appContainer" }}
 <div id="appContainer">
     <div id="mapContainer">
-        <img
-            id="mapImage"
-            src="data:image/png;base64,{{.MapImageBase64}}"
-            alt="Color World Map"
-            width="1024"
-            height="512"
-        />
+        <img id="mapImage" src="data:image/png;base64,{{.MapImageBase64}}" alt="Color World Map" />
     </div>
     <div id="lastUpdate">Last updated: {{.LastUpdate}}</div>
     <div id="version">Pixels drawn: {{.Updates}}</div>
