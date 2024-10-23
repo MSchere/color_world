@@ -67,6 +67,7 @@ func updatePixel(c *fiber.Ctx) error {
 	if !match || err != nil {
 		return c.Status(fiber.StatusBadRequest).SendString("Invalid color")
 	}
+
 	err = UpdatePixel(Pixel{posX, posY, color})
 	if err != nil {
 		return c.Status(fiber.StatusUnprocessableEntity).SendString(err.Error())

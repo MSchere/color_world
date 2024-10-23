@@ -23,7 +23,11 @@ type MapCache struct {
 
 const (
 	SEA_COLOR  = "#5b6ee1"
+	LAND_COLOR = "" // TODO: Fill land color variable
 	PIXEL_SIZE = 5
+	MAP_WIDTH  = 1024
+	MAP_HEIGHT = 512
+	SEA_RANGE  = 500
 )
 
 var (
@@ -36,20 +40,20 @@ func InitPixelRepository() {
 
 func GetPixels() ([]Pixel, error) {
 	rdb := RedisConnection()
-	width, height := 1024, 512
+	width, height := MAP_WIDTH, MAP_HEIGHT
 	totalPixels := width * height
 
 	pixels := make([]Pixel, 0, totalPixels)
 	var wg sync.WaitGroup                      // Wait group to wait for all goroutines to finish
 	pixelChan := make(chan Pixel, totalPixels) // Channel to send pixels
-	semaphore := make(chan struct{}, 100)      // Limit concurrent goroutines
+	semaphore := make(chan int, 100)           // Limit concurrent goroutines
 
 	for x := 0; x < width; x++ {
 		for y := 0; y < height; y++ {
 			wg.Add(1)           // Increment wait group counter for each goroutine
 			go func(x, y int) { // Goroutine to fetch pixel from Redis and send it to channel when done
+				semaphore <- 1                 // Acquire semaphore to limit concurrent goroutines
 				defer wg.Done()                // Decrement wait group counter when the goroutine finishes
-				semaphore <- struct{}{}        // Acquire semaphore to limit concurrent goroutines
 				defer func() { <-semaphore }() // Release semaphore when the goroutine finishes
 
 				key := fmt.Sprintf("%d:%d", x, y)
@@ -78,50 +82,75 @@ func GetPixels() ([]Pixel, error) {
 }
 
 func UpdatePixel(newPixel Pixel) error {
-	if !pixelExists(newPixel) {
-		return fmt.Errorf("Invalid pixel position, cannot update sea pixels")
+	valid, errStr := isOwnPositionValid(newPixel)
+	if !valid {
+		return fmt.Errorf(errStr)
 	}
-	if !isColorValid(newPixel) {
-		return fmt.Errorf("Invalid pixel color, must be different from the current color")
+
+	valid, errStr = isNeighbourPositionValid(newPixel)
+	if !valid {
+		return fmt.Errorf(errStr)
 	}
-	if !isPositionValid(newPixel) {
-		return fmt.Errorf("Invalid pixel position, must be adjacent to another pixel of the same color")
-	}
+
 	err := rdb.Set(fmt.Sprintf("%d:%d", newPixel.X, newPixel.Y), []byte(newPixel.Color), 0)
 	if err != nil {
 		return fmt.Errorf("Failed to update pixel in database")
 	}
+
 	fmt.Printf("Updated in-memory pixel %d:%d to %s\n", newPixel.X, newPixel.Y, newPixel.Color)
 	return nil
 }
 
-func pixelExists(p Pixel) bool {
-	val, err := rdb.Get(fmt.Sprintf("%d:%d", p.X, p.Y))
-	return val != nil || err != nil
+func isOwnPositionValid(p Pixel) (bool, string) {
+	existingPixelColor, err := rdb.Get(fmt.Sprintf("%d:%d", p.X, p.Y))
+	if err != nil {
+		return false, "Invalid pixel position, pixel does not exist"
+	}
+	if p.Color == SEA_COLOR {
+		return false, "Invalid pixel position, cannot update sea pixels"
+	}
+	if p.Color == string(existingPixelColor) {
+		return false, "Invalid pixel position, new color must be different from the current one"
+	}
+	return true, ""
 }
 
-func isColorValid(p Pixel) bool {
-	existingPixelColor, _ := rdb.Get(fmt.Sprintf("%d:%d", p.X, p.Y))
-	return string(existingPixelColor) != p.Color
-}
-
-func isPositionValid(p Pixel) bool {
-	// check that any of the 8 surrounding pixels is the same color
+// TODO: Complete this funcito
+func isNeighbourPositionValid(p Pixel) (bool, string) {
+	// check that any of the 8 surrounding pixels is the same color or that it is adjacent to the sea
 	for x := p.X - 1; x <= p.X+1; x++ {
 		for y := p.Y - 1; y <= p.Y+1; y++ {
 			if x == p.X && y == p.Y { // Skip the pixel itself
 				continue
 			}
 			neighbourColor, err := rdb.Get(fmt.Sprintf("%d:%d", x, y))
-			if err != nil || neighbourColor == nil { // Skip if neighbour pixel does not exist (sea)
-				continue
+
+			if err != nil { // edge of the map
+				// check at which of the 4 edges we are and get the new neighbour
+				if x < 0 {
+					neighbourColor, _ = rdb.Get(fmt.Sprintf("%d:%d", MAP_WIDTH, y))
+				}
+				if x > MAP_WIDTH {
+					neighbourColor, _ = rdb.Get(fmt.Sprintf("%d:%d", 0, y))
+				}
+				if y < 0 {
+					neighbourColor, _ = rdb.Get(fmt.Sprintf("%d:%d", x, MAP_HEIGHT))
+				}
+				if y > MAP_HEIGHT {
+					neighbourColor, _ = rdb.Get(fmt.Sprintf("%d:%d", x, 0))
+				}
 			}
-			if string(neighbourColor) == p.Color {
-				return true
+
+			if string(neighbourColor) == SEA_COLOR { // neighbouring the sea
+				// check if there are any pixels at a SEA_RANGE pixel radious that are neighbouring the sea
+			}
+
+			if string(neighbourColor) == p.Color { // neighbouring a land pixel of the same color
+				return true, ""
 			}
 		}
 	}
-	return false
+	return false, ""
 }
 
 func GetMapCache() *MapCache {
