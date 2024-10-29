@@ -2,7 +2,7 @@
 <!doctype html>
 <html>
     <head>
-        <title>{{.Title}}</title>
+        <title>Color World</title>
         <script src="https://unpkg.com/htmx.org@1.9.6"></script>
         <link rel="stylesheet" href="static/styles.css" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -10,34 +10,43 @@
         <meta name="description" content="Color the World!" />
     </head>
     <body>
-        <h1>{{.Title}}</h1>
+        <h1>Color World</h1>
         <div id="overlayContainer">
-            {{ template "appContainer" . }} {{ template "errorDialog" . }}
+            {{ template "mapContainer" . }}
+            {{ template "errorDialog" . }}
             <div
                 id="clickOverlay"
                 hx-post="/update-pixel"
                 hx-trigger="click"
-                hx-target="#appContainer"
+                hx-target="#mapContainer"
                 hx-swap="outerHTML"
             ></div>
-        </div>
-        <div id="pickerContainer">
-            <label for="colorPicker">Select color:</label>
-            <input type="color" id="colorPicker" value="#000000" />
         </div>
         <script src="static/clickableMap.js"></script>
         <script src="static/errorHandler.js"></script>
     </body>
 </html>
-{{ end }} {{ define "appContainer" }}
-<div id="appContainer">
-    <div id="mapContainer">
-        <img id="mapImage" src="data:image/png;base64,{{.MapImageBase64}}" alt="Color World Map" />
-    </div>
-    <div id="lastUpdate">Last updated: {{.LastUpdate}}</div>
-    <div id="version">Pixels drawn: {{.Updates}}</div>
+{{ end }}
+
+{{ define "mapContainer" }}
+<div id="mapContainer">
+    <img id="mapImage" src="data:image/png;base64,{{.MapImageBase64}}" alt="Color World Map" />
+        {{ template "uiContainer" . }}
 </div>
-{{ end }} {{ define "errorDialog" }}
+{{ end }}
+
+{{ define "uiContainer" }}
+<div id="uiContainer">
+    <div id="pickerContainer">
+        <label for="colorPicker">Select color:</label>
+        <input type="color" id="colorPicker" value="#000000" />
+    </div>
+    <div id="version">Pixels drawn: {{.Updates}}</div>
+    <div id="lastUpdate">Last updated: {{.LastUpdate}}</div>
+</div>
+{{ end }}
+
+{{ define "errorDialog" }}
 <dialog id="errorDialog">
     <p id="errorMessage"></p>
     <form method="dialog">

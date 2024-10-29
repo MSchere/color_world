@@ -41,7 +41,6 @@ func renderMap(c *fiber.Ctx) error {
 	}
 
 	return c.Render("index", fiber.Map{
-		"Title":          "Color World",
 		"MapImageBase64": base64.StdEncoding.EncodeToString(mapCache.Image),
 		"LastUpdate":     mapCache.LastUpdate.Format(time.RFC3339),
 		"Updates":        mapCache.Version,
@@ -77,10 +76,10 @@ func updatePixel(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).SendString("Error updating map cache")
 	}
-
-	return c.Render("appContainer", fiber.Map{
+	return c.Render("mapContainer", fiber.Map{
 		"MapImageBase64": base64.StdEncoding.EncodeToString(mapCache.Image),
 		"LastUpdate":     mapCache.LastUpdate.Format(time.RFC3339),
 		"Updates":        mapCache.Version,
 	})
+	// TODO: don't loose color picker value on rerender
 }

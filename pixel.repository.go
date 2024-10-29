@@ -23,11 +23,11 @@ type MapCache struct {
 
 const (
 	SEA_COLOR  = "#5b6ee1"
-	LAND_COLOR = "" // TODO: Fill land color variable
+	LAND_COLOR = "#6abe30"
 	PIXEL_SIZE = 5
 	MAP_WIDTH  = 1024
 	MAP_HEIGHT = 512
-	SEA_RANGE  = 100
+	SEA_RANGE  = 50
 )
 
 var (
@@ -108,11 +108,14 @@ func isOwnPositionValid(p Pixel) (bool, string) {
 	if err != nil {
 		return false, "Invalid pixel position, pixel does not exist"
 	}
-	if p.Color == SEA_COLOR {
+	if p.Color == SEA_COLOR || string(existingPixelColor) == SEA_COLOR {
 		return false, "Invalid pixel position, cannot update sea pixels"
 	}
 	if p.Color == string(existingPixelColor) {
 		return false, "Invalid pixel position, new color must be different from the current one"
+	}
+	if p.X < 0 || p.X >= MAP_WIDTH || p.Y < 0 || p.Y >= MAP_HEIGHT {
+		return false, "Invalid pixel position, out of bounds"
 	}
 	return true, ""
 }
@@ -140,20 +143,17 @@ func isNeighboursPositionValid(p Pixel) (bool, string) {
 
 			// neighbouring the sea
 			if string(neighbourColor) == SEA_COLOR {
-				// get the perimeter around the circle
-				perimeter := GetCirclePerimeter(p, SEA_RANGE)
-				// iterate over the paths between the center pixel and the perimeter
-				for _, perimeterPixel := range perimeter {
-					path := GetShortestPath(p, perimeterPixel)
-					// get the color of each pixel in the path
-					for _, pathPixel := range path {
-						pathPixelColor, _ := rdb.Get(fmt.Sprintf("%d:%d", pathPixel.X, pathPixel.Y))
-						if string(pathPixelColor) == p.Color {
-							return true, ""
-						}
+				// get the circle of pixels around the new pixel
+				circlePixels := GetCircleFill(p, SEA_RANGE)
+				fmt.Printf("Calculated circle with %v pixels\n", len(circlePixels))
+				// get the color of each pixel in the circle
+				for _, circlePixel := range circlePixels {
+					circlePixelColor, _ := rdb.Get(fmt.Sprintf("%d:%d", circlePixel.X, circlePixel.Y))
+					if string(circlePixelColor) == p.Color {
+						return true, ""
 					}
 				}
-				return false, fmt.Sprintf("Invalid pixel position, new pixel must be at least %d pixels from of of the same color", SEA_RANGE)
+				return false, fmt.Sprintf("Invalid pixel position, new pixel must be at least %d pixels from one of the same color", SEA_RANGE)
 			}
 		}
 	}

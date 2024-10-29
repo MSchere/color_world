@@ -6,8 +6,8 @@
     --border-thickness: 2px;
     --text-color: #fcfcfc;
     --text-color-alt: #aaa;
-    --background-color: #5b6ee1;
-    --background-color-alt: #3a3a3a;
+    --sea-color: #5b6ee1;
+    --land-color: #6abe30;
 
     --font-weight-normal: 500;
     --font-weight-medium: 600;
@@ -37,20 +37,19 @@ html {
     width: 100%;
     margin: 0;
     padding: 0;
-    background: var(--background-color);
+    background: var(--sea-color);
     color: var(--text-color);
 }
 
 body {
     display: flex;
     flex-direction: column;
-    align-items: center;
-    justify-content: center;
     width: 100%;
     margin: 0;
     padding: var(--line-height) 2ch;
     line-height: var(--line-height);
-    overflow-x: hidden;
+    overflow-x: auto;
+    overflow-y: auto;
 }
 
 @media screen and (max-width: 480px) {
@@ -63,7 +62,16 @@ body {
 }
 
 ::-webkit-scrollbar {
-    width: 0;
+    width: 1rem;
+    height: 1rem;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--text-color);
+}
+
+::-webkit-scrollbar-track {
+    background: var(--sea-color);
 }
 
 h1,
@@ -330,7 +338,7 @@ textarea {
     height: calc(var(--line-height) * 2);
     width: auto;
     overflow: visible;
-    background: var(--background-color);
+    background: var(--sea-color);
     color: var(--text-color);
     line-height: normal;
     -webkit-font-smoothing: inherit;
@@ -384,8 +392,8 @@ button {
 
 button:hover {
     background: var(--text-color);
-    color: var(--background-color);
-    border-color: var(--background-color);
+    color: var(--sea-color);
+    border-color: var(--sea-color);
 }
 button:active {
     transform: translate(2px, 2px);
@@ -404,15 +412,6 @@ label input {
     width: 100%;
 }
 
-#appContainer {
-    position: relative;
-    display: flex;
-    gap: 1rem;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-}
-
 #overlayContainer {
     position: relative;
 }
@@ -429,23 +428,50 @@ label input {
 }
 
 #mapContainer {
+    position: relative;
+    display: flex;
+    gap: 1rem;
+    flex-direction: column;
     width: calc(var(--map-width) * var(--pixel-size));
     height: calc(var(--map-height) * var(--pixel-size));
+}
+
+#uiContainer {
+    position: fixed;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    bottom: 1rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 999;
+    border: 1px solid var(--text-color);
+    padding: 1rem;
 }
 
 #pickerContainer {
     display: flex;
     font-size: 0.8rem;
     flex-direction: column;
+    justify-content: center;
+    align-items: center;
     gap: 0.5rem;
-    color: #fcfcfc;
     width: 200px;
 }
 
+#colorPicker {
+    width: 100px;
+    height: 100px;
+    background: none;
+    border: none;
+    cursor: pointer;
+}
+
 #errorDialog {
-    position: absolute;
+    position: fixed;
     top: 25%;
-    background: var(--background-color);
+    background: var(--sea-color);
     border: var(--border-thickness) solid var(--text-color);
     color: var(--text-color);
 }
