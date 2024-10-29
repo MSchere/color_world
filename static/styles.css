@@ -12,7 +12,7 @@
     --font-weight-normal: 500;
     --font-weight-medium: 600;
     --font-weight-bold: 800;
-    --pixel-size: 5;
+    --pixel-size: 8;
     --map-width: 1024px;
     --map-height: 512px;
 
@@ -46,7 +46,6 @@ body {
     flex-direction: column;
     width: 100%;
     margin: 0;
-    padding: var(--line-height) 2ch;
     line-height: var(--line-height);
     overflow-x: auto;
     overflow-y: auto;
@@ -421,7 +420,6 @@ label input {
     top: 0;
     left: 0;
     margin: 0;
-    border: 1px solid #fcfcfc;
     width: calc(var(--map-width) * var(--pixel-size));
     height: calc(var(--map-height) * var(--pixel-size));
     cursor: crosshair;
@@ -466,6 +464,10 @@ label input {
     background: none;
     border: none;
     cursor: pointer;
+}
+
+#lastUpdate {
+    font-size: 0.8rem;
 }
 
 #errorDialog {

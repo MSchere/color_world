@@ -24,7 +24,7 @@ type MapCache struct {
 const (
 	SEA_COLOR  = "#5b6ee1"
 	LAND_COLOR = "#6abe30"
-	PIXEL_SIZE = 5
+	PIXEL_SIZE = 8
 	MAP_WIDTH  = 1024
 	MAP_HEIGHT = 512
 	SEA_RANGE  = 50

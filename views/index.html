@@ -10,7 +10,6 @@
         <meta name="description" content="Color the World!" />
     </head>
     <body>
-        <h1>Color World</h1>
         <div id="overlayContainer">
             {{ template "mapContainer" . }}
             {{ template "errorDialog" . }}
@@ -42,7 +41,7 @@
         <input type="color" id="colorPicker" value="#000000" />
     </div>
     <div id="version">Pixels drawn: {{.Updates}}</div>
-    <div id="lastUpdate">Last updated: {{.LastUpdate}}</div>
+    <div id="lastUpdate">Updated: {{.LastUpdate}}</div>
 </div>
 {{ end }}
 
