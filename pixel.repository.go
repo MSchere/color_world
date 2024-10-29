@@ -27,7 +27,7 @@ const (
 	PIXEL_SIZE = 5
 	MAP_WIDTH  = 1024
 	MAP_HEIGHT = 512
-	SEA_RANGE  = 500
+	SEA_RANGE  = 100
 )
 
 var (
@@ -81,13 +81,14 @@ func GetPixels() ([]Pixel, error) {
 	return pixels, nil
 }
 
+// Checks if the pixel update is valid and updates the pixel in the database
 func UpdatePixel(newPixel Pixel) error {
 	valid, errStr := isOwnPositionValid(newPixel)
 	if !valid {
 		return fmt.Errorf(errStr)
 	}
 
-	valid, errStr = isNeighbourPositionValid(newPixel)
+	valid, errStr = isNeighboursPositionValid(newPixel)
 	if !valid {
 		return fmt.Errorf(errStr)
 	}
@@ -97,10 +98,11 @@ func UpdatePixel(newPixel Pixel) error {
 		return fmt.Errorf("Failed to update pixel in database")
 	}
 
-	fmt.Printf("Updated in-memory pixel %d:%d to %s\n", newPixel.X, newPixel.Y, newPixel.Color)
+	fmt.Printf("Updated pixel %d:%d to %s\n", newPixel.X, newPixel.Y, newPixel.Color)
 	return nil
 }
 
+// Checks if the new pixel's color is valid and within the map's boundaries
 func isOwnPositionValid(p Pixel) (bool, string) {
 	existingPixelColor, err := rdb.Get(fmt.Sprintf("%d:%d", p.X, p.Y))
 	if err != nil {
@@ -115,42 +117,47 @@ func isOwnPositionValid(p Pixel) (bool, string) {
 	return true, ""
 }
 
-// TODO: Complete this funcito
-func isNeighbourPositionValid(p Pixel) (bool, string) {
-	// check that any of the 8 surrounding pixels is the same color or that it is adjacent to the sea
+// Checks that the neighbouring pixels are valid
+func isNeighboursPositionValid(p Pixel) (bool, string) {
+	// check that any of the 8 surrounding pixels is the same color
+	// or that it is adjacent to the sea and within the SEA_RANGE
 	for x := p.X - 1; x <= p.X+1; x++ {
 		for y := p.Y - 1; y <= p.Y+1; y++ {
 			if x == p.X && y == p.Y { // Skip the pixel itself
 				continue
 			}
-			neighbourColor, err := rdb.Get(fmt.Sprintf("%d:%d", x, y))
 
-			if err != nil { // edge of the map
-				// check at which of the 4 edges we are and get the new neighbour
-				if x < 0 {
-					neighbourColor, _ = rdb.Get(fmt.Sprintf("%d:%d", MAP_WIDTH, y))
-				}
-				if x > MAP_WIDTH {
-					neighbourColor, _ = rdb.Get(fmt.Sprintf("%d:%d", 0, y))
-				}
-				if y < 0 {
-					neighbourColor, _ = rdb.Get(fmt.Sprintf("%d:%d", x, MAP_HEIGHT))
-				}
-				if y > MAP_HEIGHT {
-					neighbourColor, _ = rdb.Get(fmt.Sprintf("%d:%d", x, 0))
-				}
+			nx, ny := NormalizeCoordinate(x, y) // Normalize the coordinates to wrap around the map
+			neighbourColor, err := rdb.Get(fmt.Sprintf("%d:%d", nx, ny))
+			if err != nil {
+				return false, "Invalid pixel position, neighbour does not exist"
 			}
 
-			if string(neighbourColor) == SEA_COLOR { // neighbouring the sea
-				// check if there are any pixels at a SEA_RANGE pixel radious that are neighbouring the sea
-			}
-
-			if string(neighbourColor) == p.Color { // neighbouring a land pixel of the same color
+			// neighbouring a land pixel of the same color
+			if string(neighbourColor) == p.Color {
 				return true, ""
+			}
+
+			// neighbouring the sea
+			if string(neighbourColor) == SEA_COLOR {
+				// get the perimeter around the circle
+				perimeter := GetCirclePerimeter(p, SEA_RANGE)
+				// iterate over the paths between the center pixel and the perimeter
+				for _, perimeterPixel := range perimeter {
+					path := GetShortestPath(p, perimeterPixel)
+					// get the color of each pixel in the path
+					for _, pathPixel := range path {
+						pathPixelColor, _ := rdb.Get(fmt.Sprintf("%d:%d", pathPixel.X, pathPixel.Y))
+						if string(pathPixelColor) == p.Color {
+							return true, ""
+						}
+					}
+				}
+				return false, fmt.Sprintf("Invalid pixel position, new pixel must be at least %d pixels from of of the same color", SEA_RANGE)
 			}
 		}
 	}
-	return false, ""
+	return false, "Invalid pixel postion, new pixel must be adjacent to another pixel of the same color"
 }
 
 func GetMapCache() *MapCache {
